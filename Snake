@@ -1,0 +1,173 @@
+from tkinter import *  #interface graphique
+from random import randint  #aléatoire
+
+fenetre = Tk()  #création de la fenêtre de jeu
+fenetre.title('Snake')  #titre de la fenêtre de jeu
+
+hauteur = fenetre.winfo_screenheight() #dimension de l'écran
+largeur = fenetre.winfo_screenwidth()
+
+H = str(int(hauteur / 2.1))
+L = str(int(largeur / 4))
+
+# On applique la taille voulue à la fenêtre grâce à l'appel de fonction geometry(wxh+X+Y) où:
+# w, h sont respectivement la largeur et la hauteur
+# X et Y sont les coordonnées du point d'origine relativement au coin haut-gauche de la fenêtre
+# le x et les deux + sont des séparateurs
+# pour insérer les variables, on les concatène avec des chaînes de caractères au moyen de l'opérateur de concaténation +
+fenetre.geometry(L + "x" + H + "+0+0")
+
+LargeurPlateau = largeur / 4  #définition des dimensions pour jouer
+HauteurPlateau = hauteur / 2.4
+
+Plateau = Canvas(fenetre, width=LargeurPlateau, height=HauteurPlateau, bg="grey")  #création du canvas jeu
+Plateau.pack(side="bottom")  #définition du début du canvas
+
+Barre = Text(fenetre, width=int(LargeurPlateau / 2), height=int(HauteurPlateau / 10), bg="light blue")  #création du canvas score
+Barre.pack(side="top")
+Barre.insert(END, "Score: 0\n")  #score initial
+
+NombreDeCases = 45  #,nombre de cases du plateau
+
+LargeurCase = (LargeurPlateau / NombreDeCases)  #dimension d'une case
+HauteurCase = (HauteurPlateau / NombreDeCases)
+
+#Détermine taille des cases du plateau, les dessine en vert pour symboliser le serpent
+def remplir_case(x, y):
+    OrigineCaseX1 = x * LargeurCase  #coordonnées d'origine en haut à gauche
+    OrigineCaseY1 = y * HauteurCase
+    OrigineCaseX2 = OrigineCaseX1 + LargeurCase  #coordonnées d'origine en bas à droite
+    OrigineCaseY2 = OrigineCaseY1 + HauteurCase
+
+    Plateau.create_rectangle(OrigineCaseX1, OrigineCaseY1, OrigineCaseX2, OrigineCaseY2, fill="green")  #changer en vert
+
+
+#Renvoie une case aléatoire
+def case_aleatoire():
+    AleatoireX = randint(0, NombreDeCases - 1)
+    AleatoireY = randint(0, NombreDeCases - 1)
+
+    return (AleatoireX, AleatoireY)
+
+
+#Afficher le serpent
+def dessine_serpent(snake):
+    for case in snake:
+        x, y = case
+        remplir_case(x, y)
+
+def etre_dans_snake(case):
+    if case in SNAKE:
+        EtreDedans = 1
+    else:
+        EtreDedans = 0
+    return EtreDedans
+
+def fruit_aleatoire():
+    FruitAleatoire = case_aleatoire()
+
+    while (etre_dans_snake(FruitAleatoire)):
+        FruitAleatoire = case_aleatoire
+
+    return FruitAleatoire
+
+def dessine_fruit():
+    global FRUIT
+
+    x, y = FRUIT
+
+    OrigineCaseX1 = x * LargeurCase
+    OrigineCaseY1 = y * HauteurCase
+    OrigineCaseX2 = OrigineCaseX1 + LargeurCase
+    OrigineCaseY2 = OrigineCaseY1 + HauteurCase
+
+    Plateau.create_oval(OrigineCaseX1, OrigineCaseY1, OrigineCaseX2, OrigineCaseY2, fill="red")
+
+#Déplacement du serpent
+def left_key(event):
+    global MOUVEMENT
+    MOUVEMENT = (-1, 0)
+
+def right_key(event):
+    global MOUVEMENT
+    MOUVEMENT = (1, 0)
+
+def up_key(event):
+    global MOUVEMENT
+    MOUVEMENT = (0, -1)
+
+def down_key(event):
+    global MOUVEMENT
+    MOUVEMENT = (0, 1)
+
+fenetre.bind("<Left>", left_key)
+fenetre.bind("<Right>", right_key)
+fenetre.bind("<Up>", up_key)
+fenetre.bind("<Down>", down_key)
+
+#Indique si perdu
+def serpent_mort(NouvelleTete):
+    global PERDU
+
+    NouvelleTeteX, NouvelleTeteY = NouvelleTete
+
+    if (etre_dans_snake(NouvelleTete) and MOUVEMENT != (0,0)) or NouvelleTeteX < 0 or NouvelleTeteY < 0 or NouvelleTeteX >= NombreDeCases or NouvelleTeteY >= NombreDeCases:
+        PERDU = 1
+
+#Met à jour le score
+def mise_a_jour_score():
+    global SCORE
+
+    SCORE = SCORE + 1
+    Barre.delete(0.0, 3.0)
+    Barre.insert(END, "Score: " + str(SCORE) + "\n")
+
+def mise_a_jour_snake():
+    global SNAKE, FRUIT
+
+    (AncienneTeteX, AncienneTeteY) = SNAKE[0]
+    MouvementX, MouvementY = MOUVEMENT
+    NouvelleTete = (AncienneTeteX + MouvementX, AncienneTeteY + MouvementY)
+    serpent_mort(NouvelleTete)
+    SNAKE.insert(0, NouvelleTete)
+
+    if NouvelleTete == FRUIT:
+        FRUIT = fruit_aleatoire()
+        mise_a_jour_score()
+    else:
+        SNAKE.pop()
+
+def reinitialiser_jeu():
+    global SNAKE, FRUIT, MOUVEMENT, SCORE, PERDU
+
+    SNAKE = [case_aleatoire()]
+    FRUIT = fruit_aleatoire()
+    MOUVEMENT = (0, 0)
+    SCORE = 0
+    PERDU = 0
+
+def tache():
+    fenetre.update()
+    fenetre.update_idletasks()
+    mise_a_jour_snake()
+    Plateau.delete("all")
+    dessine_fruit()
+    dessine_serpent(SNAKE)
+
+    if PERDU:
+        Barre.delete(0.0, 3.0)
+        Barre.insert(END, "Score : " + str(SCORE))
+        reinitialiser_jeu()
+        fenetre.after(70, tache)
+    else:
+        fenetre.after(70, tache)
+
+SNAKE = [case_aleatoire()]
+FRUIT = fruit_aleatoire()
+MOUVEMENT = (0, 0)
+SCORE = 0
+PERDU = 0
+
+fenetre.after(0, tache())
+
+fenetre.mainloop()
